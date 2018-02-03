@@ -18,14 +18,17 @@ library(rasterVis)
 library(tools)
 ```
  
- # Read MFRI 
+ # Read in Data 
  
-```{r Read in MFRIs, include=T}
+```{r Read in Data, include=T}
  all_mfri = list.files('./Wildfire_MFRI/',pattern = '.tif',full.names = T)
  for(file in all_mfri){
    object_name = file_path_sans_ext(basename(file))
    assign(object_name, raster(file))
  }
+
+CC4a_reg = read_sf('./Boundries/CC4a_RegionsSub.shp')
+CC4a_reg  = st_transform(CC4a_reg, "+proj=aea +lat_1=34 +lat_2=40.5 +lat_0=0 +lon_0=-120 +x_0=0 +y_0=-4000000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs")
 
 ```
 
@@ -34,7 +37,12 @@ library(tools)
 ```{r Read in MFRIs , include=T}
  all_2001_2025 = stack(all_mfri[grepl('2001_2025',all_mfri)])
  all_2026_2050 = stack(all_mfri[grepl('2026_2050',all_mfri)])
+ 
+ # years for maximum plotted MFRI
  capat=500
+
+ # calculate stats for stacks and cap MFRI 
+ # writes out files with 3 different postfix _stat for statisic (mean etc), _df for dataframe for ggplot, _capped for raster capted at value capat
  summary_functions = c('min','max','mean' )
  for(summary in summary_functions){
    for(stac in c('all_2001_2025','all_2026_2050')){
@@ -56,6 +64,14 @@ library(tools)
 ```
 
 
+```{r Plot Stacks, include=T}
+all_2001_2025[all_2001_2025>500]=500
+all_2026_2050[all_2026_2050>500]=500
+plot(all_2001_2025)
+plot(all_2026_2050)
+
+```
+
 ```{r Plot Change in MFRIs 2000 - 2025 mean, include=T}
  mean_chg_76_25 = MFRI_76_00.df
  mean_chg_76_25$MFRI =  mean_all_2001_2025_df$MFRI-mean_chg_76_25$MFRI
@@ -64,8 +80,8 @@ library(tools)
  
  ggplot()+geom_raster(data=mean_chg_76_25,aes(x=lon,y=lat,fill=MFRI))+ 
    scale_fill_gradientn(colours= c("#cc0000", "#cc0000"  , 'grey', "#339933","#339933" ), #colors in 
-      limits=c(-350, 350))+ #same limits for plots
-   ggtitle('Change in MFRIs 2000 - 2025 mean model run')
+      limits=c(-350, 350))+ geom_sf(data=CC4a_reg,colour = "grey30", fill = NA,size=.75) + #same limits for plots
+   ggtitle('Change in MFRIs 2000 - 2025 mean model run')+coord_sf()
 ``` 
  
 ```{r Plot Change in MFRIs 2000 - 2050 mean, include=T}
@@ -75,10 +91,18 @@ library(tools)
  rng= range(mean_chg_76_50$MFRI)
  
  ggplot()+geom_raster(data=mean_chg_76_50,aes(x=lon,y=lat,fill=MFRI))+ 
-   scale_fill_gradientn(colours= c("#cc0000", "#cc0000"  , 'grey', "#339933","#339933" ), #colors in 
-                 limits=c(-350, 350))+ #same limits for plots
-    ggtitle('Change in MFRIs 2000 - 2050 mean model run')
+   scale_fill_gradientn(colours= c("#cc0000", "#cc0000"  , 'grey', "#339933","#339933" ),   
+                 limits=c(-350, 350))+ geom_sf(data=CC4a_reg,colour = "grey30", fill = NA,size=.75)+  
+    ggtitle('Change in MFRIs 2000 - 2050 mean model run')+coord_sf()
 ``` 
+ 
+```{r Extract data to polyons, include=T}
+ the_fun = median
+ full_mean_stack = stack(MFRI_76_00,mean_all_2001_2025,mean_all_2026_2050)
+ extract(full_mean_stack, as(CC4a_reg,'Spatial'), fun=the_fun, na.rm=TRUE, df=T)
+ 
+```
+ 
  
  
 ```{r Plot MFRIs, eval=FALSE, include=FALSE}
