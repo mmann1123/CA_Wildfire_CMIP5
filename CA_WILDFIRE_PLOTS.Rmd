@@ -3,8 +3,8 @@ title: "CA_WILDFIRE_PLOTS"
 author: "Michael Mann"
 date: "January 31, 2018"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -16,6 +16,9 @@ library(sf)
 library(ggplot2)
 library(rasterVis)
 library(tools)
+library(dplyr)
+library(reshape2)
+library(rmapshaper)
 ```
  
  # Read in Data 
@@ -29,6 +32,8 @@ library(tools)
 
 CC4a_reg = read_sf('./Boundries/CC4a_RegionsSub.shp')
 CC4a_reg  = st_transform(CC4a_reg, "+proj=aea +lat_1=34 +lat_2=40.5 +lat_0=0 +lon_0=-120 +x_0=0 +y_0=-4000000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs")
+# dissolve multipart Sierra Mountain feature
+CC4a_reg = ms_dissolve(CC4a_reg,field = 'Region')
 
 ```
 
@@ -96,13 +101,36 @@ plot(all_2026_2050)
     ggtitle('Change in MFRIs 2000 - 2050 mean model run')+coord_sf()
 ``` 
  
-```{r Extract data to polyons, include=T}
- the_fun = median
+```{r Extract data to polyons, message=FALSE, warning=FALSE, include=T, paged.print=FALSE}
+
+ the_fun = median  # function used to summarize raster values by polygons
+ region_code = data.frame(ID=seq(1,9),as(CC4a_reg,'Spatial')@data$Region)
  full_mean_stack = stack(MFRI_76_00,mean_all_2001_2025,mean_all_2026_2050)
- extract(full_mean_stack, as(CC4a_reg,'Spatial'), fun=the_fun, na.rm=TRUE, df=T)
+ names(full_mean_stack) =c('2000','2025','2050')
+ extract_full_mean_df = extract(full_mean_stack, as(CC4a_reg,'Spatial'), fun=the_fun, na.rm=T, df=T)
+ extract_full_mean_df = left_join(region_code,extract_full_mean_df,by='ID') %>% select(-ID)%>%melt()
+ extract_full_mean_df$Year = as.numeric(substr(as.character(extract_full_mean_df$variable),2,5))
+ names(extract_full_mean_df)=c('Region','variable','value','Year')
+
+ the_fun = min  # function used to summarize raster values by polygons
+ full_min_stack = stack(MFRI_76_00,min_all_2001_2025,min_all_2026_2050)
+ names(full_min_stack) =c('2000','2025','2050')
+ extract_full_min_df = extract(full_min_stack, as(CC4a_reg,'Spatial'), fun=the_fun, na.rm=T, df=T)
+ extract_full_min_df = left_join(region_code,extract_full_min_df,by='ID') %>% select(-ID)%>%melt()
+ extract_full_min_df$Year = as.numeric(substr(as.character(extract_full_min_df$variable),2,5))
+ names(extract_full_min_df)=c('Region','variable','value','Year')
+
+```
+  
+```{r Plot MFRI time series by region MIN, message=FALSE, warning=FALSE, include=T}
+  ggplot()+geom_smooth(data=subset(extract_full_min_df, Region != 'Inland South' ),aes(x=Year,y=value,color=Region,group=Region),size=1.25,alpha=.6)  +ggtitle('Minimum observed MFRI of Min(all_models) by region - \n omitting Inland South')
  
 ```
  
+```{r Plot MFRI time series by region MEDIAN of MEAN, message=FALSE, warning=FALSE, include=T}
+  ggplot()+geom_smooth(data=subset(extract_full_mean_df, Region != 'Inland South' ),aes(x=Year,y=value,color=Region,group=Region),size=1.25,alpha=.6)  +ggtitle('Median observed MFRI of Mean(all_models) by region - \n omitting Inland South')
+ 
+```
  
  
 ```{r Plot MFRIs, eval=FALSE, include=FALSE}
