@@ -3,8 +3,8 @@ title: "CA_WILDFIRE_PLOTS"
 author: "Michael Mann"
 date: "January 31, 2018"
 output:
-  html_document: default
   pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -87,6 +87,17 @@ plot(all_2026_2050)
    scale_fill_gradientn(colours= c("#cc0000", "#cc0000"  , 'grey', "#339933","#339933" ), #colors in 
       limits=c(-350, 350))+ geom_sf(data=CC4a_reg,colour = "grey30", fill = NA,size=.75) + #same limits for plots
    ggtitle('Change in MFRIs 2000 - 2025 mean model run')+coord_sf()
+ 
+ 
+for(region_aoi in CC4a_reg$Region){  
+    aoi = st_bbox(CC4a_reg[CC4a_reg$Region==region_aoi,])
+    aplot = ggplot()+  geom_raster(data=mean_chg_76_25,aes(x=lon,y=lat,fill=MFRI))+ 
+     scale_fill_gradientn(colours= c("#cc0000", "#cc0000"  , 'grey', "#339933","#339933" ),  
+        limits=c(-350, 350))+ geom_sf(data=CC4a_reg,colour = "grey30", fill = NA,size=.75) +  
+     ggtitle(paste(region_aoi,'\nChange in MFRIs 2000 - 2025 \nMean model run'))+
+      coord_sf( xlim=c(aoi[1],aoi[3]),ylim=c(aoi[2],aoi[4]) )
+    plot(aplot)
+    }
 ``` 
  
 ```{r Plot Change in MFRIs 2000 - 2050 mean, include=T}
@@ -99,6 +110,17 @@ plot(all_2026_2050)
    scale_fill_gradientn(colours= c("#cc0000", "#cc0000"  , 'grey', "#339933","#339933" ),   
                  limits=c(-350, 350))+ geom_sf(data=CC4a_reg,colour = "grey30", fill = NA,size=.75)+  
     ggtitle('Change in MFRIs 2000 - 2050 mean model run')+coord_sf()
+ 
+  
+for(region_aoi in CC4a_reg$Region){  
+    aoi = st_bbox(CC4a_reg[CC4a_reg$Region==region_aoi,])
+    aplot = ggplot()+  geom_raster(data=mean_chg_76_50,aes(x=lon,y=lat,fill=MFRI))+ 
+     scale_fill_gradientn(colours= c("#cc0000", "#cc0000"  , 'grey', "#339933","#339933" ),  
+        limits=c(-350, 350))+ geom_sf(data=CC4a_reg,colour = "grey30", fill = NA,size=.75) +  
+     ggtitle(paste(region_aoi,'\nChange in MFRIs 2000 - 2050 \nMean model run'))+
+      coord_sf( xlim=c(aoi[1],aoi[3]),ylim=c(aoi[2],aoi[4]) )
+    plot(aplot)
+    }
 ``` 
  
 ```{r Extract data to polyons, message=FALSE, warning=FALSE, include=T, paged.print=FALSE}
