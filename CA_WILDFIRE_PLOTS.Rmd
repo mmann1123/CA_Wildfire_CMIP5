@@ -9,8 +9,8 @@ output:
 
 ```{r setup, include=FALSE}
 rm(list=ls())
-
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(cache=T)
+knitr::opts_chunk$set(echo = T)
 library(raster)
 library(sf)
 library(ggplot2)
@@ -24,7 +24,7 @@ library(rmapshaper)
  # Read in Data 
  
 ```{r Read in Data, include=T}
- all_mfri = list.files('./Wildfire_MFRI/',pattern = '.tif',full.names = T)
+ all_mfri = list.files('./Wildfire_MFRI2/',pattern = '.tif',full.names = T)
  for(file in all_mfri){
    object_name = file_path_sans_ext(basename(file))
    assign(object_name, raster(file))
@@ -154,25 +154,46 @@ for(region_aoi in CC4a_reg$Region){
  
 ```
  
- 
-```{r Plot MFRIs, eval=FALSE, include=FALSE}
- all_2001_2025 = stack(all_mfri[grepl('2001_2025',all_mfri)])
- all_2026_2050 = stack(all_mfri[grepl('2026_2050',all_mfri)])
- capat=1e14
- summary_functions = c('min','max','mean' )
- for(summary in summary_functions){
-   for(stac in c('all_2001_2025','all_2026_2050')){
-      assign(paste(summary,stac,sep='_'),do.call(summary,list(x=get(stac),na.rm=T)))
-      capper = get(paste(summary,stac,sep='_'))
-      capper[capper>capat]=capat # cap at 500 yrs
-      assign(paste(summary,stac,sep='_'),capper)
-   }}
- 
- 
-  plot(min_all_2026_2050)
-  MFRI_76_00[MFRI_76_00>500]=500
-  plot(MFRI_76_00)
+
+# Median MFRI by individual model run 
+```{r Extract individual models to polyons, echo=TRUE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+  the_fun = median
+  for(model in c('GA2','MIROC_rcp45','MIROC_rcp85','mpircp','PA2')){
+    region_code = data.frame(ID=seq(1,9),as(CC4a_reg,'Spatial')@data$Region)
+
+    model_stack = stack(MFRI_76_00,all_2001_2025[[grep(model,names(all_2001_2025))]],
+                        all_2026_2050[[grep(model,names(all_2001_2025))]])
+    names(model_stack) =c('2000','2025','2050')
+    extract_model_stack_df = extract(model_stack, as(CC4a_reg,'Spatial'), fun=the_fun, na.rm=T, df=T)
+    extract_model_stack_df = left_join(region_code,extract_model_stack_df,by='ID') %>% select(-ID)%>%melt()
+    extract_model_stack_df$Year = as.numeric(substr(as.character(extract_model_stack_df$variable),2,5))
+    names(extract_model_stack_df)=c('Region','variable','value','Year')
+    
+    aplot = ggplot()+geom_smooth(data=subset(extract_model_stack_df, Region != 'Inland South' ),     aes(x=Year,y=value,color=Region,group=Region),size=1.25,alpha=.6)  +ggtitle(paste(model,' - Median observed MFRI by region - \n omitting Inland South'))  
+    plot(aplot)
+  }
 ```
 
+
+
+<!-- ```{r Plot MFRIs, eval=FALSE, include=FALSE} -->
+<!--  all_2001_2025 = stack(all_mfri[grepl('2001_2025',all_mfri)]) -->
+<!--  all_2026_2050 = stack(all_mfri[grepl('2026_2050',all_mfri)]) -->
+<!--  capat=1e14 -->
+<!--  summary_functions = c('min','max','mean' ) -->
+<!--  for(summary in summary_functions){ -->
+<!--    for(stac in c('all_2001_2025','all_2026_2050')){ -->
+<!--       assign(paste(summary,stac,sep='_'),do.call(summary,list(x=get(stac),na.rm=T))) -->
+<!--       capper = get(paste(summary,stac,sep='_')) -->
+<!--       capper[capper>capat]=capat # cap at 500 yrs -->
+<!--       assign(paste(summary,stac,sep='_'),capper) -->
+<!--    }} -->
+
+
+<!--   plot(min_all_2026_2050) -->
+<!--   MFRI_76_00[MFRI_76_00>500]=500 -->
+<!--   plot(MFRI_76_00) -->
+<!-- ``` -->
 
 
