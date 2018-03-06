@@ -13,6 +13,8 @@ library(dplyr)
 library(tidyr)
 library(broom)
 library(ggplot2)
+library(doMC)
+library(doParallel)
 ```
 
 
@@ -45,6 +47,7 @@ baf$pop_recode = ordered(baf$pop_recode, levels = c("Low", "BAU", "High"))
 
 ```
 
+# Cal adapt model agreement (westerling)
 ```{r}
   # download all from http://cal-adapt.org/data/
   
@@ -63,31 +66,45 @@ baf$pop_recode = ordered(baf$pop_recode, levels = c("Low", "BAU", "High"))
   # pop_scenario = c('bau') #,'L','H')
   # scenario = c(45,85)
    
-  fire_tif = data.frame(fire_tif=list.files('C:/Users/mmann/Desktop/CA_Wildfire_CMIP5/Westerling_Fire_Runs/',
+  fire_tif = data.frame(fire_tif=list.files('./Westerling_Fire_Runs/',
                                             pattern='.tif', full.names = T),stringsAsFactors = F )
 
   # calculate average burned area for base year 
+  # filter out which fire model runs to include in stacks 
+  pop_scen = 'bau'
+  clim_scen = '85'  # '85|45' to get both
+
   search_range = paste(seq(decade_group_names[[1]][1],decade_group_names[[1]][2]),collapse='|')
-  mean_base_year = fire_tif %>% filter(grepl(search_range,fire_tif))%>% filter(grepl('bau',fire_tif)) %>% .$fire_tif %>% stack() %>% mean(.,na.rm=T)
+  mean_base_year = fire_tif %>% filter(grepl(search_range,fire_tif))%>% filter(grepl(pop_scen,fire_tif)) %>% .$fire_tif %>% stack() %>% mean(.,na.rm=T)
   
   # create stacks by decade group 
   search_range = paste(seq(decade_group_names[[2]][1],decade_group_names[[2]][2]),collapse='|')
-  stack_2001_2025 = fire_tif %>% filter(grepl(search_range,fire_tif))%>% filter(grepl('bau',fire_tif)) %>% .$fire_tif %>% stack()  
+  stack_2001_2025 = fire_tif %>% filter(grepl(search_range,fire_tif))%>% filter(grepl(pop_scen,fire_tif))%>% filter(grepl(clim_scen,fire_tif)) %>% .$fire_tif %>% stack()  
   
   search_range = paste(seq(decade_group_names[[3]][1],decade_group_names[[3]][2]),collapse='|')
-  stack_2026_2050 = fire_tif %>% filter(grepl(search_range,fire_tif))%>% filter(grepl('bau',fire_tif)) %>% .$fire_tif %>% stack()  
+  stack_2026_2050 = fire_tif %>% filter(grepl(search_range,fire_tif))%>% filter(grepl(pop_scen,fire_tif))%>% filter(grepl(clim_scen,fire_tif))  %>% .$fire_tif %>% stack()  
   
   search_range = paste(seq(decade_group_names[[4]][1],decade_group_names[[4]][2]),collapse='|')
-  stack_2051_2075 = fire_tif %>% filter(grepl(search_range,fire_tif))%>% filter(grepl('bau',fire_tif)) %>% .$fire_tif %>% stack()  
+  stack_2051_2075 = fire_tif %>% filter(grepl(search_range,fire_tif))%>% filter(grepl(pop_scen,fire_tif))%>% filter(grepl(clim_scen,fire_tif))  %>% .$fire_tif %>% stack()  
   
   search_range = paste(seq(decade_group_names[[5]][1],decade_group_names[[5]][2]),collapse='|')
-  stack_2076_2100 = fire_tif %>% filter(grepl(search_range,fire_tif))%>% filter(grepl('bau',fire_tif)) %>% .$fire_tif %>% stack() 
+  stack_2076_2100 = fire_tif %>% filter(grepl(search_range,fire_tif))%>% filter(grepl(pop_scen,fire_tif))%>% filter(grepl(clim_scen,fire_tif))  %>% .$fire_tif %>% stack() 
   
-  # calc differences between future and base year mean 
-  dif_2001_2025 = stack_2001_2025-mean_base_year
-  dif_2026_2050 = stack_2026_2050-mean_base_year
-  dif_2051_2075 = stack_2051_2075-mean_base_year
-  dif_2076_2100 = stack_2076_2100-mean_base_year
+  # calc differences between future and base year mean
+  diff_stack = function(stack_in, sub_in, nworkers=5){
+     cl <- makeCluster(nworkers)
+     registerDoParallel(cl)
+     ras_back = foreach(layeri=1:dim(stack_in)[3], .inorder=T,.packages=c('raster')) %dopar% {
+           return(stack_in[[layeri]]-sub_in)
+       }
+      stopCluster(cl)
+      return(stack(ras_back))
+  }
+ 
+  dif_2001_2025 = diff_stack(stack_2001_2025,mean_base_year)
+  dif_2026_2050 = diff_stack(stack_2026_2050,mean_base_year)
+  dif_2051_2075 = diff_stack(stack_2051_2075,mean_base_year)
+  dif_2076_2100 = diff_stack(stack_2076_2100,mean_base_year)
   
   # convert each model run to 1 for + changes and -1 for - changes
   for(dif_name in ls(envir=.GlobalEnv, pattern="dif_")){
@@ -99,10 +116,13 @@ baf$pop_recode = ordered(baf$pop_recode, levels = c("Low", "BAU", "High"))
   }
   rm(dif_name)
   
+ 
   # find models that agree 
-  threshold = 150 
+  threshold = 0.90  # percentage that should agree eg 0.75
+  threshold_n = round(dim(get(ls(envir=.GlobalEnv, pattern="dif_")[1]))[3]*threshold)
   for(dif_name in ls(envir=.GlobalEnv, pattern="dif_")){
     print(dif_name)
+    
     sum_s =  sum(stack(get(dif_name)))
     agg_s = sum_s
     agg_s[!is.na(agg_s)] = 0
@@ -112,9 +132,14 @@ baf$pop_recode = ordered(baf$pop_recode, levels = c("Low", "BAU", "High"))
   }
   rm(dif_name)
 
+  plot(agree_dif_2001_2025)
+  plot(agree_dif_2026_2050)
+  plot(agree_dif_2051_2075)
+  plot(agree_dif_2076_2100)
+
   
     
-  ggplot() + geom_raster(data=na.omit(Agreement_2026_2050), aes(x=x, y=y, fill=factor(val))) + geom_raster(data=na.omit(hum_ef_df), aes(x=x, y=y, fill= factor(hum_effect))) + geom_sf(data=CC4a_reg,colour = "grey30", fill = NA,size=.75) +   coord_sf( xlim=c(aoi[1],aoi[3]),ylim=c(aoi[2],aoi[4]) )+ scale_fill_manual(values = c("#31B404","grey","#DF013A"),name="Agreement")  + labs(fill='Human Effect\non Fire Count') 
+  #ggplot() + geom_raster(data=na.omit(Agreement_2026_2050), aes(x=x, y=y, fill=factor(val))) + geom_raster(data=na.omit(hum_ef_df), aes(x=x, y=y, fill= factor(hum_effect))) + geom_sf(data=CC4a_reg,colour = "grey30", fill = NA,size=.75) +   coord_sf( xlim=c(aoi[1],aoi[3]),ylim=c(aoi[2],aoi[4]) )+ scale_fill_manual(values = c("#31B404","grey","#DF013A"),name="Agreement")  + labs(fill='Human Effect\non Fire Count') 
   
 
 ```
