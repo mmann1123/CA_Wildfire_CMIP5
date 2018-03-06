@@ -43,47 +43,47 @@ CC4a_reg = ms_dissolve(CC4a_reg,field = 'Region')
 hum_ef = raster('Human_Nat_Effect/hum_effect.tif')
 hum_ef_df = data.frame(rasterToPoints(hum_ef))
 
-for(region_aoi in CC4a_reg$Region[7]){  
-    aoi = st_bbox(CC4a_reg[CC4a_reg$Region==region_aoi,])
-    aplot = ggplot()+  geom_raster(data=hum_ef_df,aes(x=x,y=y,fill=hum_effect))+ 
-     scale_fill_gradientn(colours= rev(c("#cc0000", "#cc0000"  , 'grey', "#339933","#339933" )),  
-        limits=c())+ geom_sf(data=CC4a_reg,colour = "grey30", fill = NA,size=.75) +  
-     #ggtitle(paste(region_aoi,'\nChange in MFRIs 2000 - 2025 \nMean model run'))+
-      coord_sf( xlim=c(aoi[1],aoi[3]),ylim=c(aoi[2],aoi[4]) )+ labs(fill='Human Effect\non Fire Count') 
-    plot(aplot)
-}
-ggsave(filename = 'C://Users/mmann/Desktop/human_eff_sf.png')
-
+region_aoi = CC4a_reg$Region[7]) 
+aoi = st_bbox(CC4a_reg[CC4a_reg$Region==region_aoi,])
+aplot = ggplot()+  geom_raster(data=hum_ef_df,aes(x=x,y=y,fill=hum_effect))+ 
+ scale_fill_gradientn(colours= rev(c("#cc0000", "#cc0000"  , 'grey', "#339933","#339933" )),  
+    limits=c())+ geom_sf(data=CC4a_reg,colour = "grey30", fill = NA,size=.75) +  
+ #ggtitle(paste(region_aoi,'\nChange in MFRIs 2000 - 2025 \nMean model run'))+
+  coord_sf( xlim=c(aoi[1],aoi[3]),ylim=c(aoi[2],aoi[4]) )+ labs(fill='Human Effect\non Fire Count') 
+plot(aplot)
+ 
+ggsave(filename = './human_eff_sf.png')
 
 
 nat_ef = raster('Human_Nat_Effect/nat_effect.tif')
 nat_ef_df = data.frame(rasterToPoints(nat_ef))
 
-for(region_aoi in CC4a_reg$Region[7]){  
-    aoi = st_bbox(CC4a_reg[CC4a_reg$Region==region_aoi,])
-    aplot = ggplot()+  geom_raster(data=nat_ef_df,aes(x=x,y=y,fill=nat_effect))+ 
-     scale_fill_gradientn(colours= rev(c("#cc0000", "#cc0000"  , 'grey', "#339933","#339933" )),  
-        limits=c())+ geom_sf(data=CC4a_reg,colour = "grey30", fill = NA,size=.75) +  
-     #ggtitle(paste(region_aoi,'\nChange in MFRIs 2000 - 2025 \nMean model run'))+
-      coord_sf( xlim=c(aoi[1],aoi[3]),ylim=c(aoi[2],aoi[4]) )+ labs(fill='Natural Effect\non Fire Count') 
-    plot(aplot)
-}
+region_aoi in CC4a_reg$Region[7]) 
+aoi = st_bbox(CC4a_reg[CC4a_reg$Region==region_aoi,])
+aplot = ggplot()+  geom_raster(data=nat_ef_df,aes(x=x,y=y,fill=nat_effect))+ 
+ scale_fill_gradientn( colours= rev(c("#cc0000", "#F54C4C" ,"#CFA9A9" , 'grey' )),  
+    limits=c())+ geom_sf(data=CC4a_reg,colour = "grey30", fill = NA,size=.75) +  
+ #ggtitle(paste(region_aoi,'\nChange in MFRIs 2000 - 2025 \nMean model run'))+
+  coord_sf( xlim=c(aoi[1],aoi[3]),ylim=c(aoi[2],aoi[4]) )+ labs(fill='Natural Effect\non Fire Count') 
+plot(aplot)
+    
+
 ggsave('C://Users/mmann/Desktop/natural_eff_sf.png')
 
 
-pub_ef = raster('Human_Nat_Effect/pub_effect.tif')
+pub_ef = raster('./Human_Nat_Effect/pub_effect.tif')
 pub_ef_df = data.frame(rasterToPoints(pub_ef))
 
-for(region_aoi in CC4a_reg$Region[7]){  
-    aoi = st_bbox(CC4a_reg[CC4a_reg$Region==region_aoi,])
-    aplot = ggplot()+  geom_raster(data=pub_ef_df,aes(x=x,y=y,fill=pub_effect))+ 
-     scale_fill_gradientn(colours= rev(c("#cc0000", "#cc0000"  , 'grey', "#339933","#339933" )),  
-        limits=c())+ geom_sf(data=CC4a_reg,colour = "grey30", fill = NA,size=.75) +  
-     #ggtitle(paste(region_aoi,'\nChange in MFRIs 2000 - 2025 \nMean model run'))+
-      coord_sf( xlim=c(aoi[1],aoi[3]),ylim=c(aoi[2],aoi[4]) )+ labs(fill='Public Land Effect\non Fire Count') 
-    plot(aplot)
-}
-ggsave('C://Users/mmann/Desktop/public_eff_sf.png')
+region_aoi = CC4a_reg$Region[7]
+aoi = st_bbox(CC4a_reg[CC4a_reg$Region==region_aoi,])
+aplot = ggplot()+  geom_raster(data=pub_ef_df,aes(x=x,y=y,fill=pub_effect))+
+ scale_fill_gradientn(colours= rev(c( "#cc0000", "#cc0000"  , 'grey' )),
+    limits=c())+ geom_sf(data=CC4a_reg,colour = "grey30", fill = NA,size=.75) +
+ #ggtitle(paste(region_aoi,'\nChange in MFRIs 2000 - 2025 \nMean model run'))+
+  coord_sf( xlim=c(aoi[1],aoi[3]),ylim=c(aoi[2],aoi[4]) )+ labs(fill='Public Land Effect\non Fire Count')
+plot(aplot)
+
+ggsave('./public_eff_sf.png')
 
 
 ```
