@@ -8,17 +8,17 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-rm(list=ls())
-knitr::opts_chunk$set(cache=T)
-knitr::opts_chunk$set(echo = T)
-library(raster)
-library(sf)
-library(ggplot2)
-library(rasterVis)
-library(tools)
-library(dplyr)
-library(reshape2)
-library(rmapshaper)
+  rm(list=ls())
+  knitr::opts_chunk$set(cache=T)
+  knitr::opts_chunk$set(echo = T)
+  library(raster)
+  library(sf)
+  library(ggplot2)
+  library(rasterVis)
+  library(tools)
+  library(dplyr)
+  library(reshape2)
+  library(rmapshaper)
 ```
  
  # Read in Data 
@@ -30,64 +30,99 @@ library(rmapshaper)
    assign(object_name, raster(file))
  }
 
-CC4a_reg = read_sf('./Boundries/CC4a_RegionsSub.shp')
-CC4a_reg  = st_transform(CC4a_reg, "+proj=aea +lat_1=34 +lat_2=40.5 +lat_0=0 +lon_0=-120 +x_0=0 +y_0=-4000000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs")
-# dissolve multipart Sierra Mountain feature
-CC4a_reg = ms_dissolve(CC4a_reg,field = 'Region')
+  CC4a_reg = read_sf('./Boundries/CC4a_RegionsSub.shp')
+  CC4a_reg  = st_transform(CC4a_reg, "+proj=aea +lat_1=34 +lat_2=40.5 +lat_0=0 +lon_0=-120 +x_0=0 +y_0=-4000000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs")
+  # dissolve multipart Sierra Mountain feature
+  CC4a_reg = ms_dissolve(CC4a_reg,field = 'Region')
 
 ```
 
 # Plot PLOS1 human natural effects 
 
 ```{r , include=T}
-hum_ef = raster('Human_Nat_Effect/hum_effect.tif')
-hum_ef_df = data.frame(rasterToPoints(hum_ef))
-
-region_aoi = CC4a_reg$Region[7]) 
-aoi = st_bbox(CC4a_reg[CC4a_reg$Region==region_aoi,])
-aplot = ggplot()+  geom_raster(data=hum_ef_df,aes(x=x,y=y,fill=hum_effect))+ 
- scale_fill_gradientn(colours= rev(c("#cc0000", "#cc0000"  , 'grey', "#339933","#339933" )),  
-    limits=c())+ geom_sf(data=CC4a_reg,colour = "grey30", fill = NA,size=.75) +  
- #ggtitle(paste(region_aoi,'\nChange in MFRIs 2000 - 2025 \nMean model run'))+
-  coord_sf( xlim=c(aoi[1],aoi[3]),ylim=c(aoi[2],aoi[4]) )+ labs(fill='Human Effect\non Fire Count') 
-plot(aplot)
- 
-ggsave(filename = './human_eff_sf.png')
-
-
-nat_ef = raster('Human_Nat_Effect/nat_effect.tif')
-nat_ef_df = data.frame(rasterToPoints(nat_ef))
-
-region_aoi in CC4a_reg$Region[7]) 
-aoi = st_bbox(CC4a_reg[CC4a_reg$Region==region_aoi,])
-aplot = ggplot()+  geom_raster(data=nat_ef_df,aes(x=x,y=y,fill=nat_effect))+ 
- scale_fill_gradientn( colours= rev(c("#cc0000", "#F54C4C" ,"#CFA9A9" , 'grey' )),  
-    limits=c())+ geom_sf(data=CC4a_reg,colour = "grey30", fill = NA,size=.75) +  
- #ggtitle(paste(region_aoi,'\nChange in MFRIs 2000 - 2025 \nMean model run'))+
-  coord_sf( xlim=c(aoi[1],aoi[3]),ylim=c(aoi[2],aoi[4]) )+ labs(fill='Natural Effect\non Fire Count') 
-plot(aplot)
-    
-
-ggsave('C://Users/mmann/Desktop/natural_eff_sf.png')
-
-
-pub_ef = raster('./Human_Nat_Effect/pub_effect.tif')
-pub_ef_df = data.frame(rasterToPoints(pub_ef))
-
-region_aoi = CC4a_reg$Region[7]
-aoi = st_bbox(CC4a_reg[CC4a_reg$Region==region_aoi,])
-aplot = ggplot()+  geom_raster(data=pub_ef_df,aes(x=x,y=y,fill=pub_effect))+
- scale_fill_gradientn(colours= rev(c( "#cc0000", "#cc0000"  , 'grey' )),
-    limits=c())+ geom_sf(data=CC4a_reg,colour = "grey30", fill = NA,size=.75) +
- #ggtitle(paste(region_aoi,'\nChange in MFRIs 2000 - 2025 \nMean model run'))+
-  coord_sf( xlim=c(aoi[1],aoi[3]),ylim=c(aoi[2],aoi[4]) )+ labs(fill='Public Land Effect\non Fire Count')
-plot(aplot)
-
-ggsave('./public_eff_sf.png')
+  hum_ef = raster('Human_Nat_Effect/hum_effect.tif')
+  hum_ef_df = data.frame(rasterToPoints(hum_ef))
+  
+  region_aoi = CC4a_reg$Region[7] 
+  aoi = st_bbox(CC4a_reg[CC4a_reg$Region==region_aoi,])
+  aplot = ggplot()+  geom_raster(data=hum_ef_df,aes(x=x,y=y,fill=hum_effect))+ 
+   scale_fill_gradientn(colours= rev(c("#cc0000", "#cc0000"  , 'grey', "#339933","#339933" )),  
+      limits=c())+ geom_sf(data=CC4a_reg,colour = "grey30", fill = NA,size=.75) +  
+   #ggtitle(paste(region_aoi,'\nChange in MFRIs 2000 - 2025 \nMean model run'))+
+    coord_sf( xlim=c(aoi[1],aoi[3]),ylim=c(aoi[2],aoi[4]) )+ labs(fill='Human Effect\non Fire Count') 
+  plot(aplot)
+   
+  ggsave(filename = './human_eff_sf.png')
+  
+  
+  nat_ef = raster('Human_Nat_Effect/nat_effect.tif')
+  nat_ef_df = data.frame(rasterToPoints(nat_ef))
+  
+  region_aoi = CC4a_reg$Region[7]
+  aoi = st_bbox(CC4a_reg[CC4a_reg$Region==region_aoi,])
+  aplot = ggplot()+  geom_raster(data=nat_ef_df,aes(x=x,y=y,fill=nat_effect))+ 
+   scale_fill_gradientn( colours= rev(c("#cc0000", "#F54C4C" ,"#CFA9A9" , 'grey' )),  
+      limits=c())+ geom_sf(data=CC4a_reg,colour = "grey30", fill = NA,size=.75) +  
+   #ggtitle(paste(region_aoi,'\nChange in MFRIs 2000 - 2025 \nMean model run'))+
+    coord_sf( xlim=c(aoi[1],aoi[3]),ylim=c(aoi[2],aoi[4]) )+ labs(fill='Natural Effect\non Fire Count') 
+  plot(aplot)
+      
+  
+  ggsave('C://Users/mmann/Desktop/natural_eff_sf.png')
+  
+  
+  pub_ef = raster('./Human_Nat_Effect/pub_effect.tif')
+  pub_ef_df = data.frame(rasterToPoints(pub_ef))
+  
+  region_aoi = CC4a_reg$Region[7]
+  aoi = st_bbox(CC4a_reg[CC4a_reg$Region==region_aoi,])
+  aplot = ggplot()+  geom_raster(data=pub_ef_df,aes(x=x,y=y,fill=pub_effect))+
+   scale_fill_gradientn(colours= rev(c( "#cc0000", "#cc0000"  , 'grey' )),
+      limits=c())+ geom_sf(data=CC4a_reg,colour = "grey30", fill = NA,size=.75) +
+   #ggtitle(paste(region_aoi,'\nChange in MFRIs 2000 - 2025 \nMean model run'))+
+    coord_sf( xlim=c(aoi[1],aoi[3]),ylim=c(aoi[2],aoi[4]) )+ labs(fill='Public Land Effect\non Fire Count')
+  plot(aplot)
+  
+  ggsave('./public_eff_sf.png')
 
 
 ```
 
+# PLOS1 Model Agreement 
+
+```{r, include=T}
+
+ Agreement_2001_2025 = read.csv(  'C:/Users/mmann/Desktop/CA_Wildfire_CMIP5/Agreement MFRI/Agreement_2001_2025.csv')
+ Agreement_2001_2025$val <- ordered(Agreement_2001_2025$val, levels =c('+ MFRI','None','- MFRI'))
+ #+proj=aea +lat_1=34 +lat_2=40.5 +lat_0=0 +lon_0=-120 +x_0=0 +y_0=-4000000 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0,0,0,0,0
+ 
+ hum_ef = raster('Human_Nat_Effect/hum_effect.tif')
+ hum_ef_df = data.frame(rasterToPoints(hum_ef))
+
+ hum_ef_df$hum_effect[hum_ef_df$hum_effect >= -0.04] = NA
+ hum_ef_df$hum_effect[hum_ef_df$hum_effect <  -0.04]  = "None"
+     
+   
+    
+  # agreement SF 2001
+  region_aoi = CC4a_reg$Region[7]
+  aoi = st_bbox(CC4a_reg[CC4a_reg$Region==region_aoi,])
+   
+  ggplot() + geom_raster(data=na.omit(Agreement_2001_2025), aes(x=x, y=y, fill=factor(val))) + geom_raster(data=na.omit(hum_ef_df), aes(x=x, y=y, fill= factor(hum_effect))) + geom_sf(data=CC4a_reg,colour = "grey30", fill = NA,size=.75) +   coord_sf( xlim=c(aoi[1],aoi[3]),ylim=c(aoi[2],aoi[4]) )+ scale_fill_manual(values = c("#31B404","grey","#DF013A"),name="Agreement")  + labs(fill='Human Effect\non Fire Count') 
+  
+  ggsave('C://Users/mmann/Desktop/Agreement_2001_2025_sf.png')
+
+
+ Agreement_2026_2050 = read.csv( 'C:/Users/mmann/Desktop/CA_Wildfire_CMIP5/Agreement MFRI/Agreement_2026_2050.csv')
+ Agreement_2026_2050$val <- ordered(Agreement_2026_2050$val, levels =c('+ MFRI','None','- MFRI'))
+
+     
+  ggplot() + geom_raster(data=na.omit(Agreement_2026_2050), aes(x=x, y=y, fill=factor(val))) + geom_raster(data=na.omit(hum_ef_df), aes(x=x, y=y, fill= factor(hum_effect))) + geom_sf(data=CC4a_reg,colour = "grey30", fill = NA,size=.75) +   coord_sf( xlim=c(aoi[1],aoi[3]),ylim=c(aoi[2],aoi[4]) )+ scale_fill_manual(values = c("#31B404","grey","#DF013A"),name="Agreement")  + labs(fill='Human Effect\non Fire Count') 
+  
+  ggsave('C://Users/mmann/Desktop/Agreement_2026_2050_sf.png')
+
+   
+```
 
  # Get stats for 01-25 & 26-50  MFRIs  cap at 500 years 
  
@@ -122,10 +157,10 @@ ggsave('./public_eff_sf.png')
 
 
 ```{r Plot Stacks, include=T}
-all_2001_2025[all_2001_2025>500]=500
-all_2026_2050[all_2026_2050>500]=500
-plot(all_2001_2025)
-plot(all_2026_2050)
+  all_2001_2025[all_2001_2025>500]=500
+  all_2026_2050[all_2026_2050>500]=500
+  plot(all_2001_2025)
+  plot(all_2026_2050)
 
 ```
 
@@ -141,7 +176,7 @@ plot(all_2026_2050)
    ggtitle('Change in MFRIs 2000 - 2025 mean model run')+coord_sf()
  
  
-for(region_aoi in CC4a_reg$Region){  
+  for(region_aoi in CC4a_reg$Region){  
     aoi = st_bbox(CC4a_reg[CC4a_reg$Region==region_aoi,])
     aplot = ggplot()+  geom_raster(data=mean_chg_76_25,aes(x=lon,y=lat,fill=MFRI))+ 
      scale_fill_gradientn(colours= c("#cc0000", "#cc0000"  , 'grey', "#339933","#339933" ),  
@@ -163,8 +198,8 @@ for(region_aoi in CC4a_reg$Region){
                  limits=c(-350, 350))+ geom_sf(data=CC4a_reg,colour = "grey30", fill = NA,size=.75)+  
     ggtitle('Change in MFRIs 2000 - 2050 mean model run')+coord_sf()
  
-  
-for(region_aoi in CC4a_reg$Region){  
+    
+  for(region_aoi in CC4a_reg$Region){  
     aoi = st_bbox(CC4a_reg[CC4a_reg$Region==region_aoi,])
     aplot = ggplot()+  geom_raster(data=mean_chg_76_50,aes(x=lon,y=lat,fill=MFRI))+ 
      scale_fill_gradientn(colours= c("#cc0000", "#cc0000"  , 'grey', "#339933","#339933" ),  

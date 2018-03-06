@@ -1,0 +1,196 @@
+---
+title: "Fire Visualizations"
+date: "March 3, 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(li)
+# fire time series
+library(plyr)
+library(dplyr)
+library(tidyr)
+library(broom)
+library(ggplot2)
+```
+
+
+ 
+```{r echo=T, message=F, warning=F }
+# read in data
+setwd('./bayarea/')
+l1r45 <- read.csv('./rcp45-low.csv',as.is=T)
+l2r45 <- read.csv('./rcp45-central.csv',as.is=T)
+l3r45 <- read.csv('./rcp45-high.csv',as.is=T)
+l1r85 <- read.csv('./rcp85-low.csv',as.is=T)
+l2r85 <- read.csv('./rcp85-central.csv',as.is=T)
+l3r85 <- read.csv('./rcp85-high.csv',as.is=T)
+
+# set up
+baf <- rbind(l1r45,l2r45,l3r45,l1r85,l2r85,l3r85)
+dim(baf)
+
+head(baf)
+baf$year <- as.numeric(substr(baf$date,4,7))
+ 
+#scenario groups
+baf$pop_recode = revalue(baf$population, c("L_mu"="Low", "bau_mu"="BAU",'H_mu'='High'))
+baf$scen_pop = paste(baf$scenario,baf$pop_recode,sep='_')
+baf$model_scen_pop = paste(baf$name, baf$scenario,baf$pop_recode,sep='_')
+baf$model = baf$name
+
+# reorder population factor
+baf$pop_recode = ordered(baf$pop_recode, levels = c("Low", "BAU", "High"))
+
+
+
+```
+
+```{r}
+
+    
+  ggplot() + geom_raster(data=(l3r85), aes(x=lng, y= lat, fill=name)) 
+```
+
+
+\newpage
+## plot by climate and population scenario
+```{r echo=T, message=F, warning=F }
+# plot by climate and population scenario
+ggplot(data=baf, aes(x=year,y=value,group=scen_pop,color=scen_pop))+geom_point(alpha=0.3)+
+  geom_smooth(alpha=.5)+geom_smooth(se=F)+ ylab('Area Burned')+xlab('Year') + 
+  labs(color='Climate & Population\nScenario')+coord_cartesian(ylim=c(5000,19000))  
+```
+
+\newpage
+## plot lm models by groups
+```{r echo=T, message=F, warning=F }
+# plot lm models by groups
+ggplot(data=baf, aes(x=year,y=value,group=model_scen_pop,color=model_scen_pop))+
+  geom_point(alpha=0.3)+geom_smooth(se = FALSE, method = "lm")+ylab('Area Burned')+
+  xlab('Year') + facet_wrap(~model)+labs(color='Climate & Population\nScenario')+  
+  coord_cartesian(ylim=c(5000,19000))+theme(legend.position="none")
+```
+\newpage
+```{r echo=T, message=F, warning=F }
+ggplot(data=baf, aes(x=year,y=value,group=model_scen_pop,color=model_scen_pop))+
+  geom_point(alpha=0.3)+geom_smooth(se = FALSE, method = "lm")+ylab('Area Burned')+
+  xlab('Year') + facet_wrap(~pop_recode)+labs(color='Climate & Population\nScenario')+
+  coord_cartesian(ylim=c(5000,19000))+theme(legend.position="none")
+```
+\newpage
+```{r echo=T, message=F, warning=F }
+ggplot(data=baf, aes(x=year,y=value,group=model_scen_pop,color=model_scen_pop))+
+  geom_point(alpha=0.3)+geom_smooth(se = FALSE, method = "lm")+ylab('Area Burned')+
+  xlab('Year') + facet_wrap(~scenario)+labs(color='Climate & Population\nScenario')+
+  coord_cartesian(ylim=c(5000,19000))+theme(legend.position="none")
+```
+\newpage
+
+##Calculate regression coefficients
+```{r echo=T, message=F, warning=F }
+# get regression coefficients
+baf_reg = baf %>% group_by(model,scenario, pop_recode) %>% do(fit = lm(value~year, data = .))
+baf_coef = tidy(baf_reg, fit) %>% as.data.frame()
+head(baf_coef)
+
+# select signficant coefficients
+baf_sig = baf_coef  %>% filter(term == "year" & p.value < 0.05) %>% 
+  select(model,scenario, pop_recode,estimate )
+head(baf_sig)
+```
+ 
+
+##Plot distribution of regression coefficients
+```{r echo=T, message=F, warning=F }
+ggplot(data = baf_sig)+geom_boxplot(aes(x=model,y=estimate,fill=model))+ 
+  labs(fill='Climate\nModel') +ylab(expression(Delta~' Burned Area / Year') )+
+  xlab('Climate Model')
+```
+\newpage
+```{r echo=T, message=F, warning=F }
+ggplot(data = baf_sig)+geom_boxplot(aes(x=scenario,y=estimate,fill=scenario))+ 
+  labs(fill='Climate\nScenario') +ylab(expression(Delta~' Burned Area / Year') )+
+  xlab('Climate Model')
+```
+\newpage
+```{r echo=T, message=F, warning=F }
+# fill by climate and population scenaario
+ggplot(data = baf_sig)+geom_boxplot(aes(x=model,y=estimate, fill= scenario))+ 
+  labs(fill='Climate\nScenario') +ylab(expression(Delta~' Burned Area / Year') )+
+  xlab('Climate Model')
+```
+\newpage
+```{r echo=T, message=F, warning=F }
+ggplot(data = baf_sig)+geom_boxplot(aes(x=model,y=estimate, fill= pop_recode)) + 
+  labs(fill='Population\nScenario')+ylab(expression(Delta~' Burned Area / Year') )+
+  xlab('Climate Model')
+```
+\newpage
+```{r echo=T, message=F, warning=F }
+# other versions
+ggplot(data = baf_sig)+geom_boxplot(aes(x=scenario,y=estimate,fill=model))+ 
+  labs(fill='Climate\nScenario') +ylab(expression(Delta~' Burned Area / Year') )+
+  xlab('Climate Model')
+```
+\newpage
+```{r echo=T, message=F, warning=F }
+ggplot(data = baf_sig)+geom_boxplot(aes(x=scenario,y=estimate,fill=pop_recode))+ 
+  labs(fill='Climate\nScenario') + ylab(expression(Delta~' Burned Area / Year') )+
+  xlab('Climate Model')
+
+```
+ 
+\newpage
+
+#Calculate maximum burn values
+```{r echo=T, message=F, warning=F }
+# get regression coefficients
+baf_max = baf %>% group_by(model,scenario, pop_recode) %>%   summarize(max = max(value, na.rm = T)) %>% 
+  as.data.frame()
+head(baf_max)
+```
+
+
+##Plot max burned area
+```{r echo=T, message=F, warning=F }
+ggplot(data = baf_max)+geom_boxplot(aes(x=model,y=max,fill=model))+ 
+  labs(fill='Climate\nModel') +ylab('Maximum Burned Area' )+
+  xlab('Climate Model')
+```
+\newpage
+```{r echo=T, message=F, warning=F }
+ggplot(data = baf_max)+geom_boxplot(aes(x=scenario,y=max,fill=scenario))+ 
+  labs(fill='Climate\nScenario') +ylab('Maximum Burned Area')+
+  xlab('Climate Model')
+```
+\newpage
+```{r echo=T, message=F, warning=F }
+# fill by climate and population scenaario
+ggplot(data = baf_max)+geom_boxplot(aes(x=model,y=max, fill= scenario))+ 
+  labs(fill='Climate\nScenario') +ylab('Maximum Burned Area' )+
+  xlab('Climate Model')
+```
+\newpage
+```{r echo=T, message=F, warning=F }
+ggplot(data = baf_max)+geom_boxplot(aes(x=model,y=max, fill= pop_recode)) + 
+  labs(fill='Population\nScenario')+ylab('Maximum Burned Area' )+
+  xlab('Climate Model')
+```
+\newpage
+```{r echo=T, message=F, warning=F }
+# other versions
+ggplot(data = baf_max)+geom_boxplot(aes(x=scenario,y=max,fill=model))+ 
+  labs(fill='Climate\nScenario') +ylab('Maximum Burned Area'  )+
+  xlab('Climate Model')
+```
+\newpage
+```{r echo=T, message=F, warning=F }
+ggplot(data = baf_max)+geom_boxplot(aes(x=scenario,y=max,fill=pop_recode))+ 
+  labs(fill='Climate\nScenario') + ylab('Maximum Burned Area')+
+  xlab('Climate Model')
+
+```
+
+
