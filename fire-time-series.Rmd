@@ -6,7 +6,7 @@ output: pdf_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-rm(li)
+rm(list=ls())
 # fire time series
 library(plyr)
 library(dplyr)
@@ -43,14 +43,80 @@ baf$model = baf$name
 # reorder population factor
 baf$pop_recode = ordered(baf$pop_recode, levels = c("Low", "BAU", "High"))
 
-
-
 ```
 
 ```{r}
+  # download all from http://cal-adapt.org/data/
+  
+  # # unzip everything
+  # setwd('C:/Users/mmann/Downloads/')
+  # ziped = list.files('.',pattern='.zip',full.names = T)
+  # for(file_zip in ziped){
+  #   unzip(file_zip,exdir=tools::file_path_sans_ext(file_zip)) 
+  # }
+  # 
+  # list.of.files <- list.files('C:/Users/mmann/Downloads/', ".tif$",recursive = T, full.names = T)
+  # file.copy(list.of.files, to = 'C:/Users/mmann/Desktop/CA_Wildfire_CMIP5/Westerling_Fire_Runs/',overwrite = T)    
 
+  decade_group_names = list(c(1976,2000), c(2001,2025), c(2026,2050),c(2051,2075),c(2076,2100))
+  # model_abrev = c("CanESM2","CNRM-CM5","HadGEM2-ES","MIROC5" )
+  # pop_scenario = c('bau') #,'L','H')
+  # scenario = c(45,85)
+   
+  fire_tif = data.frame(fire_tif=list.files('C:/Users/mmann/Desktop/CA_Wildfire_CMIP5/Westerling_Fire_Runs/',
+                                            pattern='.tif', full.names = T),stringsAsFactors = F )
+
+  # calculate average burned area for base year 
+  search_range = paste(seq(decade_group_names[[1]][1],decade_group_names[[1]][2]),collapse='|')
+  mean_base_year = fire_tif %>% filter(grepl(search_range,fire_tif))%>% filter(grepl('bau',fire_tif)) %>% .$fire_tif %>% stack() %>% mean(.,na.rm=T)
+  
+  # create stacks by decade group 
+  search_range = paste(seq(decade_group_names[[2]][1],decade_group_names[[2]][2]),collapse='|')
+  stack_2001_2025 = fire_tif %>% filter(grepl(search_range,fire_tif))%>% filter(grepl('bau',fire_tif)) %>% .$fire_tif %>% stack()  
+  
+  search_range = paste(seq(decade_group_names[[3]][1],decade_group_names[[3]][2]),collapse='|')
+  stack_2026_2050 = fire_tif %>% filter(grepl(search_range,fire_tif))%>% filter(grepl('bau',fire_tif)) %>% .$fire_tif %>% stack()  
+  
+  search_range = paste(seq(decade_group_names[[4]][1],decade_group_names[[4]][2]),collapse='|')
+  stack_2051_2075 = fire_tif %>% filter(grepl(search_range,fire_tif))%>% filter(grepl('bau',fire_tif)) %>% .$fire_tif %>% stack()  
+  
+  search_range = paste(seq(decade_group_names[[5]][1],decade_group_names[[5]][2]),collapse='|')
+  stack_2076_2100 = fire_tif %>% filter(grepl(search_range,fire_tif))%>% filter(grepl('bau',fire_tif)) %>% .$fire_tif %>% stack() 
+  
+  # calc differences between future and base year mean 
+  dif_2001_2025 = stack_2001_2025-mean_base_year
+  dif_2026_2050 = stack_2026_2050-mean_base_year
+  dif_2051_2075 = stack_2051_2075-mean_base_year
+  dif_2076_2100 = stack_2076_2100-mean_base_year
+  
+  # convert each model run to 1 for + changes and -1 for - changes
+  for(dif_name in ls(envir=.GlobalEnv, pattern="dif_")){
+    dif = stack(get(dif_name))
+    dif[dif>0]  = 1
+    dif[dif==0] = 0
+    dif[dif<0]  = -1
+    assign(dif_name,dif)
+  }
+  rm(dif_name)
+  
+  # find models that agree 
+  threshold = 150 
+  for(dif_name in ls(envir=.GlobalEnv, pattern="dif_")){
+    print(dif_name)
+    sum_s =  sum(stack(get(dif_name)))
+    agg_s = sum_s
+    agg_s[!is.na(agg_s)] = 0
+    agg_s[sum_s>threshold]  = 1
+    agg_s[sum_s<-1*threshold]  = -1
+    assign(paste('agree',dif_name,sep='_'),agg_s)
+  }
+  rm(dif_name)
+
+  
     
-  ggplot() + geom_raster(data=(l3r85), aes(x=lng, y= lat, fill=name)) 
+  ggplot() + geom_raster(data=na.omit(Agreement_2026_2050), aes(x=x, y=y, fill=factor(val))) + geom_raster(data=na.omit(hum_ef_df), aes(x=x, y=y, fill= factor(hum_effect))) + geom_sf(data=CC4a_reg,colour = "grey30", fill = NA,size=.75) +   coord_sf( xlim=c(aoi[1],aoi[3]),ylim=c(aoi[2],aoi[4]) )+ scale_fill_manual(values = c("#31B404","grey","#DF013A"),name="Agreement")  + labs(fill='Human Effect\non Fire Count') 
+  
+
 ```
 
 
