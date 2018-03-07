@@ -16,35 +16,47 @@ library(broom)
 library(ggplot2)
 library(doMC)
 library(doParallel)
+library(sf)
 ```
 
 
  
 ```{r echo=T, message=F, warning=F }
-# read in data
-setwd('./bayarea/')
-l1r45 <- read.csv('./rcp45-low.csv',as.is=T)
-l2r45 <- read.csv('./rcp45-central.csv',as.is=T)
-l3r45 <- read.csv('./rcp45-high.csv',as.is=T)
-l1r85 <- read.csv('./rcp85-low.csv',as.is=T)
-l2r85 <- read.csv('./rcp85-central.csv',as.is=T)
-l3r85 <- read.csv('./rcp85-high.csv',as.is=T)
 
-# set up
-baf <- rbind(l1r45,l2r45,l3r45,l1r85,l2r85,l3r85)
-dim(baf)
-
-head(baf)
-baf$year <- as.numeric(substr(baf$date,4,7))
- 
-#scenario groups
-baf$pop_recode = revalue(baf$population, c("L_mu"="Low", "bau_mu"="BAU",'H_mu'='High'))
-baf$scen_pop = paste(baf$scenario,baf$pop_recode,sep='_')
-baf$model_scen_pop = paste(baf$name, baf$scenario,baf$pop_recode,sep='_')
-baf$model = baf$name
-
-# reorder population factor
-baf$pop_recode = ordered(baf$pop_recode, levels = c("Low", "BAU", "High"))
+  # read in Regions 
+  CC4a_reg = read_sf('./Boundries/CC4a_RegionsSub.shp')
+  CC4a_reg  = st_transform(CC4a_reg, "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0")
+  # dissolve multipart Sierra Mountain feature
+  # CC4a_reg = ms_dissolve(CC4a_reg,field = 'Region')
+  
+  # select SF 
+  region_aoi = CC4a_reg$Region[7] 
+  aoi = st_bbox(CC4a_reg[CC4a_reg$Region==region_aoi,])
+  
+  # read in data
+  setwd('./bayarea/')
+  l1r45 <- read.csv('./rcp45-low.csv',as.is=T)
+  l2r45 <- read.csv('./rcp45-central.csv',as.is=T)
+  l3r45 <- read.csv('./rcp45-high.csv',as.is=T)
+  l1r85 <- read.csv('./rcp85-low.csv',as.is=T)
+  l2r85 <- read.csv('./rcp85-central.csv',as.is=T)
+  l3r85 <- read.csv('./rcp85-high.csv',as.is=T)
+  
+  # set up
+  baf <- rbind(l1r45,l2r45,l3r45,l1r85,l2r85,l3r85)
+  dim(baf)
+  
+  head(baf)
+  baf$year <- as.numeric(substr(baf$date,4,7))
+   
+  #scenario groups
+  baf$pop_recode = revalue(baf$population, c("L_mu"="Low", "bau_mu"="BAU",'H_mu'='High'))
+  baf$scen_pop = paste(baf$scenario,baf$pop_recode,sep='_')
+  baf$model_scen_pop = paste(baf$name, baf$scenario,baf$pop_recode,sep='_')
+  baf$model = baf$name
+  
+  # reorder population factor
+  baf$pop_recode = ordered(baf$pop_recode, levels = c("Low", "BAU", "High"))
 
 ```
 
@@ -73,7 +85,7 @@ baf$pop_recode = ordered(baf$pop_recode, levels = c("Low", "BAU", "High"))
   # calculate average burned area for base year 
   # filter out which fire model runs to include in stacks 
   pop_scen = 'bau'
-  clim_scen = '85'  # '85|45' to get both
+  clim_scen = '45'  # '85|45' to get both
 
   search_range = paste(seq(decade_group_names[[1]][1],decade_group_names[[1]][2]),collapse='|')
   mean_base_year = fire_tif %>% filter(grepl(search_range,fire_tif))%>% filter(grepl(pop_scen,fire_tif)) %>% .$fire_tif %>% stack() %>% mean(.,na.rm=T)
@@ -110,20 +122,19 @@ baf$pop_recode = ordered(baf$pop_recode, levels = c("Low", "BAU", "High"))
   # convert each model run to 1 for + changes and -1 for - changes
   for(dif_name in ls(envir=.GlobalEnv, pattern="dif_")){
     dif = stack(get(dif_name))
-    dif[dif>0]  = 1
-    dif[dif==0] = 0
-    dif[dif<0]  = -1
+    dif[dif>0]  =  1  # more fires
+    dif[dif==0] =  0
+    dif[dif<0]  = -1 # less fires 
     assign(dif_name,dif)
   }
   rm(dif_name)
   
  
-  # find models that agree 
+  # find models that agree by %
   threshold = 1  # percentage that should agree eg 0.75
   threshold_n = round(dim(get(ls(envir=.GlobalEnv, pattern="dif_")[1]))[3]*threshold)
   for(dif_name in ls(envir=.GlobalEnv, pattern="dif_")){
     print(dif_name)
-    
     sum_s =  sum(stack(get(dif_name)))
     agg_s = sum_s
     agg_s[!is.na(agg_s)] = 0
@@ -138,10 +149,27 @@ baf$pop_recode = ordered(baf$pop_recode, levels = c("Low", "BAU", "High"))
   plot(agree_dif_2051_2075,main='agree_100perct_2051_2075')
   plot(agree_dif_2076_2100,main='agree_100perct_2076_2100')
 
+  # convert to data frame and set MFRI labels 
+  for(dif_name in ls(envir=.GlobalEnv, pattern="agree_dif_")){
+      df = data.frame(rasterToPoints(get(dif_name)))
+      df$MFRI =   revalue(as.character(df$layer), c('-1'='+ MFRI', '0'='None','1'='- MFRI'))  # 1 is more fire
+      df$MFRI = ordered(df$MFRI, levels =c('+ MFRI','None','- MFRI'))
+      assign(paste('df',dif_name,sep='_'),df)
+  }
   
-    
-  #ggplot() + geom_raster(data=na.omit(Agreement_2026_2050), aes(x=x, y=y, fill=factor(val))) + geom_raster(data=na.omit(hum_ef_df), aes(x=x, y=y, fill= factor(hum_effect))) + geom_sf(data=CC4a_reg,colour = "grey30", fill = NA,size=.75) +   coord_sf( xlim=c(aoi[1],aoi[3]),ylim=c(aoi[2],aoi[4]) )+ scale_fill_manual(values = c("#31B404","grey","#DF013A"),name="Agreement")  + labs(fill='Human Effect\non Fire Count') 
   
+  # plot agreement  
+  ggplot() + geom_raster(data=na.omit(df_agree_dif_2001_2025), aes(x=x, y=y, fill=factor(MFRI)))  + geom_sf(data=CC4a_reg,colour = "grey30", fill = NA,size=.75) +   coord_sf( xlim=c(aoi[1],aoi[3]),ylim=c(aoi[2],aoi[4]) )+ scale_fill_manual(values = c( "#31B404","grey","#DF013A" ),name="Agreement")  + labs(fill='Human Effect\non Fire Count') +ggtitle('2001_2025')
+  ggsave(paste(pop_scen,clim_scen,'2001_2025_Westerling_agreement.png',sep='_'))
+  
+  ggplot() + geom_raster(data=na.omit(df_agree_dif_2026_2050), aes(x=x, y=y, fill=factor(MFRI)))  + geom_sf(data=CC4a_reg,colour = "grey30", fill = NA,size=.75) +   coord_sf( xlim=c(aoi[1],aoi[3]),ylim=c(aoi[2],aoi[4]) )+ scale_fill_manual(values = c("#31B404","grey","#DF013A"),name="Agreement")  + labs(fill='Human Effect\non Fire Count') +ggtitle('2026_2050')
+  ggsave(paste(pop_scen,clim_scen,'2026_2050_Westerling_agreement.png',sep='_'))
+
+  ggplot() + geom_raster(data=na.omit(df_agree_dif_2051_2075), aes(x=x, y=y, fill=factor(MFRI)))  + geom_sf(data=CC4a_reg,colour = "grey30", fill = NA,size=.75) +   coord_sf( xlim=c(aoi[1],aoi[3]),ylim=c(aoi[2],aoi[4]) )+ scale_fill_manual(values = c("#31B404","grey","#DF013A"),name="Agreement")  + labs(fill='Human Effect\non Fire Count') +ggtitle('2051_2075')
+  ggsave(paste(pop_scen,clim_scen,'2051_2075_Westerling_agreement.png',sep='_'))
+
+    ggplot() + geom_raster(data=na.omit(df_agree_dif_2076_2100), aes(x=x, y=y, fill=factor(MFRI)))  + geom_sf(data=CC4a_reg,colour = "grey30", fill = NA,size=.75) +   coord_sf( xlim=c(aoi[1],aoi[3]),ylim=c(aoi[2],aoi[4]) )+ scale_fill_manual(values = c("#31B404","grey","#DF013A"),name="Agreement")  + labs(fill='Human Effect\non Fire Count') +ggtitle('2076_2100')
+   ggsave(paste(pop_scen,clim_scen,'2076_2100_Westerling_agreement.png',sep='_'))
 
 ```
 
