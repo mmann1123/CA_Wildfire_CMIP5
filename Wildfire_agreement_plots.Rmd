@@ -86,7 +86,7 @@ library(sf)
   # filter out which fire model runs to include in stacks 
   pop_scen = 'bau'
   clim_scen = '_85|45_'  # '_85|45_' to get both
-  threshold = 0.75  # percentage that should agree eg 0.75
+  threshold = 0.9  # percentage that should agree eg 0.75
 
   # create mean base year 
   search_range = paste(seq(decade_group_names[[1]][1],decade_group_names[[1]][2]),collapse='|')
