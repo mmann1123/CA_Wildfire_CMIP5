@@ -55,6 +55,16 @@ output:
   ggsave(filename = './human_eff_sf.png')
   
   
+  # state plot
+  aplot = ggplot()+  geom_raster(data=hum_ef_df,aes(x=x,y=y,fill=hum_effect))+ 
+   scale_fill_gradientn(colours= rev(c("#cc0000", "#cc0000"  , 'grey', "#339933","#339933" )),  
+      limits=c())+ geom_sf(data=CC4a_reg,colour = "grey30", fill = NA,size=.75) +  
+     labs(fill='Human Effect\non Fire Count') 
+  plot(aplot)
+   
+  ggsave(filename = './state_human_eff_sf.png')
+  
+  
   nat_ef = raster('Human_Nat_Effect/nat_effect.tif')
   nat_ef_df = data.frame(rasterToPoints(nat_ef))
   
@@ -68,8 +78,19 @@ output:
   plot(aplot)
       
   
-  ggsave('C://Users/mmann/Desktop/natural_eff_sf.png')
+  ggsave('./natural_eff_sf.png')
   
+  # state plot
+
+  aplot = ggplot()+  geom_raster(data=nat_ef_df,aes(x=x,y=y,fill=nat_effect))+ 
+   scale_fill_gradientn( colours= rev(c("#cc0000", "#F54C4C" ,"#CFA9A9" , 'grey' )),  
+      limits=c())+ geom_sf(data=CC4a_reg,colour = "grey30", fill = NA,size=.75) +  
+   #ggtitle(paste(region_aoi,'\nChange in MFRIs 2000 - 2025 \nMean model run'))+
+     labs(fill='Natural Effect\non Fire Count') 
+  plot(aplot)
+  
+  ggsave('./state_natural_eff_sf.png')
+
   
   pub_ef = raster('./Human_Nat_Effect/pub_effect.tif')
   pub_ef_df = data.frame(rasterToPoints(pub_ef))
@@ -84,6 +105,16 @@ output:
   plot(aplot)
   
   ggsave('./public_eff_sf.png')
+  
+  # state plot
+  aplot = ggplot()+  geom_raster(data=pub_ef_df,aes(x=x,y=y,fill=pub_effect))+
+   scale_fill_gradientn(colours= rev(c( "#cc0000", "#cc0000"  , 'grey' )),
+      limits=c())+ geom_sf(data=CC4a_reg,colour = "grey30", fill = NA,size=.75) +
+   #ggtitle(paste(region_aoi,'\nChange in MFRIs 2000 - 2025 \nMean model run'))+
+   labs(fill='Public Land Effect\non Fire Count')
+  plot(aplot)
+  
+  ggsave('./state_public_eff_sf.png')
 
 
 ```
